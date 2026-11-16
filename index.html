@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>출근 교통 알림 발표</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  /* 가을 한상 장표와 같은 토큰 (모던 미니멀: 흑백 + 빨강) */
+  :root {
+    --color-bg: #FAFAFA;
+    --color-surface: #EDEDED;
+    --color-ink: #111111;
+    --color-ink-muted: #5C5C5C;
+    --color-ink-inverse-muted: #A3A3A3;
+    --color-accent: #D7261E;
+    --font-display: "Black Han Sans", "Pretendard", sans-serif;
+    --font-sans: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #2a2a2a; }
+  body { font-family: var(--font-sans); color: var(--color-ink); word-break: keep-all; }
+
+  /* 슬라이드 1장 = 1920×1080, 화면 폭에 맞춰 축소 */
+  .deck { display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 32px 0; }
+  .frame { width: min(100vw - 32px, 1600px); aspect-ratio: 16 / 9; position: relative; overflow: hidden; }
+  .slide {
+    width: 1920px; height: 1080px; position: absolute; top: 0; left: 0;
+    transform-origin: 0 0; background: var(--color-bg); padding: 96px 120px;
+    display: flex; flex-direction: column;
+  }
+  .slide.inverse { background: var(--color-ink); color: #fff; }
+
+  .top { display: flex; justify-content: space-between; align-items: baseline;
+         font-size: 22px; font-weight: 700; letter-spacing: 0.15em; color: var(--color-ink-muted); }
+  .inverse .top { color: var(--color-ink-inverse-muted); }
+  .top .no { color: var(--color-accent); }
+  .title { font-family: var(--font-display); font-weight: 400; font-size: 104px; line-height: 1.05;
+           letter-spacing: -0.02em; margin-top: 40px; }
+  .rule { height: 2px; background: currentColor; margin: 48px 0 0; }
+  .lead { font-size: 36px; font-weight: 700; line-height: 1.5; margin-top: 40px; }
+  .muted { color: var(--color-ink-muted); }
+  .inverse .muted { color: var(--color-ink-inverse-muted); }
+
+  .cols { display: grid; gap: 64px; margin-top: 56px; flex: 1; min-height: 0; }
+  .list { list-style: none; }
+  .list li { display: flex; gap: 24px; align-items: baseline; padding: 22px 0;
+             border-top: 1px solid currentColor; font-size: 30px; line-height: 1.45; }
+  .list li:first-child { border-top-width: 2px; }
+  .list .k { flex: 0 0 64px; font-size: 22px; font-weight: 700; color: var(--color-accent);
+             font-variant-numeric: tabular-nums; }
+  .list b { font-weight: 700; }
+  .list small { display: block; font-size: 24px; color: var(--color-ink-muted); margin-top: 4px; }
+  .inverse .list small { color: var(--color-ink-inverse-muted); }
+  .list.todo .k { flex-basis: 96px; white-space: nowrap; }
+
+  /* 1. 표지 */
+  .cover-mark { font-family: var(--font-display); font-size: 200px; line-height: 0.95; letter-spacing: -0.03em;
+                display: flex; align-items: flex-end; gap: 28px; margin-top: 48px; white-space: nowrap; }
+  .cover-mark i { width: 56px; height: 56px; background: var(--color-accent); margin-bottom: 30px; }
+
+  /* 2. 흐름 + 요약 표 */
+  .auto { display: grid; grid-template-columns: 1fr 660px; gap: 80px; margin-top: 48px; flex: 1; min-height: 0; }
+  .flow { list-style: none; position: relative; }
+  .flow li { display: grid; grid-template-columns: 64px 1fr; gap: 24px; padding: 0 0 48px; position: relative; }
+  .flow li::before { content: ""; position: absolute; left: 31px; top: 64px; bottom: 0; width: 2px; background: var(--color-ink); }
+  .flow li:last-child::before { display: none; }
+  .flow .n { width: 64px; height: 64px; display: grid; place-items: center; background: var(--color-ink); color: #fff;
+             font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .flow li:last-child .n { background: var(--color-accent); }
+  .flow b { display: block; font-size: 32px; line-height: 1.3; }
+  .flow small { display: block; font-size: 23px; line-height: 1.45; color: var(--color-ink-muted); margin-top: 6px; }
+  .spec { background: var(--color-surface); border: 2px solid var(--color-ink); padding: 32px 36px;
+          display: flex; flex-direction: column; align-self: start; }
+  .spec dl { display: grid; grid-template-columns: 120px 1fr; }
+  .spec dt, .spec dd { padding: 20px 0; border-top: 1px solid var(--color-ink); font-size: 25px; line-height: 1.45; }
+  .spec dt:first-of-type, .spec dt:first-of-type + dd { border-top: 0; padding-top: 0; }
+  .spec dt { font-size: 21px; font-weight: 700; letter-spacing: 0.08em; color: var(--color-accent); padding-top: 24px; }
+  .spec dt:first-of-type { padding-top: 4px; }
+  .spec dd b { font-weight: 700; }
+  .spec dd small { display: block; font-size: 21px; color: var(--color-ink-muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+  .chips span { font-size: 18px; font-weight: 700; padding: 7px 12px; white-space: nowrap; border: 2px solid var(--color-ink); }
+
+  /* 3. 실제 캡처 */
+  .proof { display: grid; grid-template-columns: 520px 1fr; gap: 88px; margin-top: 40px; flex: 1; min-height: 0; }
+  .proof figure { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+  .proof img { width: 100%; flex: 1; min-height: 0; object-fit: contain; object-position: top left; display: block; }
+  .proof figcaption { font-size: 20px; color: var(--color-ink-inverse-muted); }
+
+  .foot { margin-top: auto; padding-top: 24px; display: flex; justify-content: space-between;
+          font-size: 22px; color: var(--color-ink-muted); }
+  .inverse .foot { color: var(--color-ink-inverse-muted); }
+
+  /* 인쇄(PDF): 1장 = 1페이지 */
+  @page { size: 1920px 1080px; margin: 0; }
+  @media print {
+    html, body { background: none; }
+    .deck { display: block; padding: 0; }
+    .frame { width: 1920px; height: 1080px; aspect-ratio: auto; break-after: page; }
+    .slide { transform: none !important; }
+  }
+</style>
+</head>
+<body>
+<main class="deck">
+
+  <!-- 1. 문제 -->
+  <div class="frame"><section class="slide" aria-label="1. 문제">
+    <div class="top"><span>COMMUTE ALERT · 7주차 과제</span><span class="no">01 / 04 · 문제</span></div>
+    <div class="cover-mark">출근 교통 알림<i></i></div>
+    <div class="rule"></div>
+    <div class="cols" style="grid-template-columns: 1fr 1fr; margin-top: 40px;">
+      <p class="lead" style="margin-top:0">집을 나서기 전마다<br>지하철 앱과 버스 앱을 번갈아 연다.<br>필요한 것만 한 통으로 받고 싶었다.</p>
+      <ul class="list">
+        <li><span class="k">01</span><span><b>환승 경로</b> — 망포(수인분당선) → 수원 → 진위(1호선)</span></li>
+        <li><span class="k">02</span><span><b>안 가는 열차</b> — 서동탄·병점·오산행은 진위까지 가지 않는다</span></li>
+        <li><span class="k">03</span><span><b>매일 반복</b> — 평일 아침마다 같은 조회를 한다</span></li>
+      </ul>
+    </div>
+    <div class="foot"><span>장소영 · 특이점 빌더스</span><span>공공데이터 오픈 API로 만든 일상 자동화</span></div>
+  </section></div>
+
+  <!-- 2. 만든 것 -->
+  <div class="frame"><section class="slide" aria-label="2. 만든 것">
+    <div class="top"><span>WHAT I BUILT</span><span class="no">02 / 04 · 만든 것</span></div>
+    <h2 class="title">매일 아침 6:40, 출근길이 먼저 온다</h2>
+    <div class="auto">
+      <ol class="flow">
+        <li><span class="n">01</span><span><b>공공 오픈 API 두 곳</b><small>공공데이터포털 TAGO 버스도착정보 · 서울 열린데이터광장 실시간 지하철 도착정보</small></span></li>
+        <li><span class="n">02</span><span><b>Claude Code로 만든 Python 스크립트</b><small>API를 불러 진위까지 가는 열차와 곧 오는 버스만 골라 글로 정리</small></span></li>
+        <li><span class="n">03</span><span><b>Hermes 예약 작업</b><small>평일 06:40 · LLM 없이 스크립트 출력을 그대로 전달(no-agent)</small></span></li>
+        <li><span class="n">04</span><span><b>텔레그램으로 도착</b><small>봇이 보낸 한 통으로 열차와 버스를 함께 확인</small></span></li>
+      </ol>
+      <div class="spec">
+        <dl>
+          <dt>데이터</dt>
+          <dd><b>버스 도착</b> 공공데이터포털 TAGO<br><b>지하철 실시간</b> 서울 열린데이터광장<small>실시간이 안 되면 TAGO 지하철 시간표로 대신</small></dd>
+          <dt>언제</dt>
+          <dd><b>평일 오전 6시 40분</b><small>Hermes cron 40 6 * * 1-5</small></dd>
+          <dt>무엇을</dt>
+          <dd>망포 → 수원, 수원 → 진위 열차 <b>3개씩</b><br>수원버스터미널(2213) 버스 <b>5대</b></dd>
+        </dl>
+        <div class="chips"><span>공공데이터포털</span><span>열린데이터광장</span><span>Hermes cron</span><span>Telegram</span></div>
+      </div>
+    </div>
+  </section></div>
+
+  <!-- 3. 결과 -->
+  <div class="frame"><section class="slide inverse" aria-label="3. 결과">
+    <div class="top"><span>RESULT</span><span class="no">03 / 04 · 결과</span></div>
+    <div class="proof">
+      <figure>
+        <img src="assets/telegram-capture.png" alt="텔레그램으로 받은 출근 교통 알림 화면: 망포에서 수원, 수원 환승에서 진위 열차와 수원버스터미널 버스 도착 정보">
+        <figcaption>텔레그램 실제 수신 화면 · 11/16(월) 09:36 시험 실행</figcaption>
+      </figure>
+      <div>
+        <h2 class="title" style="margin-top:0; font-size:88px;">실제로 받은 알림</h2>
+        <p class="lead muted" style="margin-top:24px; font-size:30px;">예약 작업을 바로 한 번 실행해서 받은 메시지</p>
+        <ul class="list" style="margin-top:44px;">
+          <li><span class="k">01</span><span><b>지하철</b> — 방면별로 진위까지 가는 열차만<small>이 구간은 API가 분 단위를 주지 않아 “몇 번째 전역”으로 나온다</small></span></li>
+          <li><span class="k">02</span><span><b>버스</b> — 몇 분 후, 몇 정거장 전<small>수원버스터미널(2213) 정류장 기준</small></span></li>
+          <li><span class="k">03</span><span><b>키·토큰 없음</b><small>메시지와 캡처 어디에도 인증키와 봇 토큰이 나오지 않는다</small></span></li>
+        </ul>
+      </div>
+    </div>
+  </section></div>
+
+  <!-- 4. 신경 쓴 점 -->
+  <div class="frame"><section class="slide" aria-label="4. 신경 쓴 점">
+    <div class="top"><span>DETAILS</span><span class="no">04 / 04 · 신경 쓴 점</span></div>
+    <h2 class="title">필요한 것만, 끊기지 않게</h2>
+    <div class="cols" style="grid-template-columns: 1.25fr 0.75fr;">
+      <ul class="list">
+        <li><span class="k">01</span><span><b>진위까지 가는 열차만</b><small>1호선은 종착역으로 걸러 서동탄·병점·오산행을 뺐다</small></span></li>
+        <li><span class="k">02</span><span><b>실시간이 안 되면 시간표로</b><small>열린데이터광장 조회가 실패하면 공공데이터포털 TAGO 시간표로 대신 보여 준다</small></span></li>
+        <li><span class="k">03</span><span><b>키는 스크립트 밖에</b><small>인증키는 별도 .env 파일에서 읽기만 하고 스크립트에는 적지 않았다</small></span></li>
+        <li><span class="k">04</span><span><b>LLM 없이 그대로 전달</b><small>스크립트 출력이 곧 메시지라서 빠르고 내용이 바뀌지 않는다</small></span></li>
+      </ul>
+      <ul class="list todo">
+        <li><span class="k">남은 것</span><span><b>급행 정차 확인</b><small>급행이 진위에 서는지는 아직 확인하지 못했다</small></span></li>
+        <li><span class="k">남은 것</span><span><b>꺼지지 않는 컴퓨터</b><small>지금은 내 컴퓨터가 켜져 있어야 알림이 온다</small></span></li>
+      </ul>
+    </div>
+    <div class="foot"><span>장소영 · 특이점 빌더스</span><span>7주차 과제: 공공데이터 오픈 API로 일상 자동화</span></div>
+  </section></div>
+
+</main>
+<script>
+  // 슬라이드를 화면 폭에 맞춰 축소
+  function fit() {
+    document.querySelectorAll(".frame").forEach(function (f) {
+      f.firstElementChild.style.transform = "scale(" + f.clientWidth / 1920 + ")";
+    });
+  }
+  addEventListener("resize", fit);
+  fit();
+</script>
+</body>
+</html>
